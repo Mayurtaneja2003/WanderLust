@@ -8,7 +8,8 @@ const express = require("express");
 const app =  express();
 const mongoose=require("mongoose");
 
-const MONGO_URL="mongodb://127.0.0.1:27017/wanderlust";
+// const MONGO_URL="mongodb://127.0.0.1:27017/wanderlust";
+const dbUrl = process.env.ATLASDB_URL;
 
 
 const path = require("path");
@@ -45,12 +46,12 @@ main()
     });
 
 async function main() {
-  await mongoose.connect(MONGO_URL);
+  await mongoose.connect(dbUrl);
 }
 
 
 const store = MongoStore.create({
-    mongoUrl:  MONGO_URL,
+    mongoUrl:  dbUrl,
     crypto:{
         secret: process.env.SECRET,
     },
