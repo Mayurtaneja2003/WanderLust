@@ -1,6 +1,7 @@
 <% layout("layouts/boilerplate") %>
 <script>
     const mapToken = "<%= process.env.MAP_TOKEN %>";
+    console.log("mapToken", mapToken);
     const listing = <%- JSON.stringify(listing)%>;
     
 </script>
@@ -29,7 +30,86 @@
     </form>
 </div>
 <%}%>
+<div class="row mt-3">
+<% if (!(currUser && listing.owner._id.equals(currUser._id))) { %>
+    <div class="btns">
+        <!-- Button to trigger the modal -->
+        <button type="button" class="btn btn-dark col-2 offset-3 mb-3" data-bs-toggle="modal" data-bs-target="#bookingModal">
+            Book Now
+        </button>
+    </div>
+<% } %>
 
+<div class="modal fade" id="bookingModal" tabindex="-1" aria-labelledby="bookingModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="bookingModalLabel">Booking Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="/listings/<%= listing._id %>/book" method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="firstName" class="form-label">First Name</label>
+                        <input type="text" class="form-control" id="firstName" name="firstName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="lastName" class="form-label">Last Name</label>
+                        <input type="text" class="form-control" id="lastName" name="lastName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="phoneNumber" class="form-label">Phone Number</label>
+                        <input type="tel" class="form-control" id="phoneNumber" name="phoneNumber" required
+                               pattern="[0-9]{10}" title="Please enter a valid 10-digit phone number" maxlength="10">
+                    </div>
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email ID</label>
+                        <input type="email" class="form-control" id="email" name="email" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="date" class="form-label">Booking Date</label>
+                        <input type="date" class="form-control" id="date" name="date" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="days" class="form-label">Number of Days</label>
+                        <input type="number" class="form-control" id="days" name="days" required min="1">
+                    </div>
+                    <div class="mb-3">
+                        <label for="persons" class="form-label">Number of Persons</label>
+                        <input type="number" class="form-control" id="persons" name="persons" required min="1">
+                    </div>
+                    <div class="mb-3">
+                        <label for="totalAmount" class="form-label">Total Amount (₹)</label>
+                        <input type="text" class="form-control" id="totalAmount" name="totalAmount" readonly>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-dark" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-dark edit-btn">Submit</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    const daysInput = document.getElementById("days");
+    const personsInput = document.getElementById("persons");
+    const totalAmountInput = document.getElementById("totalAmount");
+
+    function calculateTotal() {
+        const days = parseInt(daysInput.value) || 0;
+        const persons = parseInt(personsInput.value) || 0;
+        const pricePerDayPerPerson = <%= listing.price %>; // Assuming price is per day per person
+        const total = days * persons * pricePerDayPerPerson;
+        totalAmountInput.value = total;
+    }
+
+    daysInput.addEventListener("input", calculateTotal);
+    personsInput.addEventListener("input", calculateTotal);
+</script>
+
+</div>
 <div class="col-8 offset-3 mb-3">
     <% if(currUser){%>
         <hr>

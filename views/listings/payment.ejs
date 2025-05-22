@@ -1,0 +1,25 @@
+<% layout("layouts/boilerplate") %>
+<div class="container mt-5">
+    <h3>Complete Your Payment</h3>
+    <p>Total Amount: ₹<%= amount %></p>
+
+    <form id="razorpay-form">
+        <script
+            src="https://checkout.razorpay.com/v1/checkout.js"
+            data-key="<%= process.env.RAZORPAY_KEY_ID %>" 
+            data-amount="<%= amount * 100 %>" 
+            data-currency="INR"
+            data-order_id="<%= orderId %>" 
+            data-buttontext="Pay Now"
+            data-name="Your App Name"
+            data-description="Booking Payment"
+            data-image="https://your-logo-url.com/logo.png"
+            data-prefill.name="<%= firstName %> <%= lastName %>"
+            data-prefill.email="<%= email %>"
+            data-prefill.contact="<%= phoneNumber %>"
+            data-theme.color="#F37254"
+            data-callback_url="/payment/success" 
+        ></script>
+        <input type="hidden" name="hidden">
+    </form>
+</div>
