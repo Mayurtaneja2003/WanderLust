@@ -1,0 +1,21 @@
+<% layout("layouts/boilerplate") %>
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 text-center">
+            <div class="card shadow">
+                <div class="card-body">
+                    <h2 class="card-title text-success mb-4">Booking Confirmed!</h2>
+                    <i class="fas fa-check-circle text-success" style="font-size: 4rem;"></i>
+                    <div class="mt-4">
+                        <h4>Booking Details</h4>
+                        <p>Payment ID: <%= paymentId %></p>
+                        <p>Amount Paid: ₹<%= amount %></p>
+                    </div>
+                    <div class="mt-4">
+                        <a href="/listings" class="btn btn-dark">Back to Listings</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

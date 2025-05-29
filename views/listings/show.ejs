@@ -47,7 +47,8 @@
                 <h5 class="modal-title" id="bookingModalLabel">Booking Details</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form action="/listings/<%= listing._id %>/book" method="POST">
+            <form id="booking-form" onsubmit="handleSubmit(event)">
+                <input type="hidden" name="listingId" value="<%= listing._id %>">
                 <div class="modal-body">
                     <div class="mb-3">
                         <label for="firstName" class="form-label">First Name</label>
@@ -82,10 +83,15 @@
                         <label for="totalAmount" class="form-label">Total Amount (₹)</label>
                         <input type="text" class="form-control" id="totalAmount" name="totalAmount" readonly>
                     </div>
+                    <div class="mb-3">
+                        <div id="priceBreakdown" class="alert alert-info">
+                            <!-- Price breakdown will be populated by JavaScript -->
+                        </div>
+                    </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-dark" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-dark edit-btn">Submit</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary">Book Now</button>
                 </div>
             </form>
         </div>
@@ -100,9 +106,39 @@
     function calculateTotal() {
         const days = parseInt(daysInput.value) || 0;
         const persons = parseInt(personsInput.value) || 0;
-        const pricePerDayPerPerson = <%= listing.price %>; // Assuming price is per day per person
-        const total = days * persons * pricePerDayPerPerson;
-        totalAmountInput.value = total;
+        const basePrice = <%= listing.price %>; // Base price per room
+        
+        // Calculate number of rooms needed (2 persons per room)
+        const roomsNeeded = Math.ceil(persons / 2);
+        
+        let totalAmount = 0;
+        // Calculate price for each day with 25% discount for additional days
+        for(let i = 0; i < days; i++) {
+            if(i === 0) {
+                totalAmount += basePrice * roomsNeeded;
+            } else {
+                // 75% of previous day's price
+                totalAmount += (totalAmount * 0.75);
+            }
+        }
+
+        // Update display
+        totalAmountInput.value = Math.round(totalAmount);
+        
+        // Show price breakdown
+        const breakdownDiv = document.getElementById('priceBreakdown');
+        if(breakdownDiv) {
+            let breakdown = `
+                <h5>Price Breakdown</h5>
+                <p>Base room price: ₹${basePrice}</p>
+                <p>Number of rooms: ${roomsNeeded} (max 2 persons per room)</p>
+                <p>Number of days: ${days}</p>
+                <p>Total persons: ${persons}</p>
+                <hr>
+                <p><strong>Total Amount: ₹${Math.round(totalAmount)}</strong></p>
+            `;
+            breakdownDiv.innerHTML = breakdown;
+        }
     }
 
     daysInput.addEventListener("input", calculateTotal);
@@ -175,4 +211,43 @@
 </div>
 
 <script src="/js/map.js"></script>
+<script>
+async function handleSubmit(e) {
+    e.preventDefault();
+    
+    // Get form data
+    const form = e.target;
+    const formData = {
+        listingId: form.querySelector('[name="listingId"]').value,
+        firstName: form.querySelector('[name="firstName"]').value,
+        lastName: form.querySelector('[name="lastName"]').value,
+        email: form.querySelector('[name="email"]').value,
+        phoneNumber: form.querySelector('[name="phoneNumber"]').value,
+        date: form.querySelector('[name="date"]').value,
+        days: form.querySelector('[name="days"]').value,
+        persons: form.querySelector('[name="persons"]').value,
+        totalAmount: document.getElementById('totalAmount').value
+    };
+
+    try {
+        const response = await fetch('/payment/create-checkout-session', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(formData)
+        });
+
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+
+        const data = await response.json();
+        window.location.href = data.url;
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Failed to process booking. Please try again.');
+    }
+}
+</script>
 

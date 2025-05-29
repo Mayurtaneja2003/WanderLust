@@ -1,92 +1,74 @@
 const express = require("express");
 const router = express.Router();
 const wrapAsync = require("../utilis/wrapAsync.js");
-const  Listing = require("../models/listing.js");
+const Listing = require("../models/listing.js");
+const Booking = require("../models/booking.js");
 const {isLoggedIn, isOwner, validateListing} = require("../middleware.js");
-const {handleBooking} = require("../controllers/listing.js")
 const listingcontroller = require("../controllers/listing.js");
-const multer  = require('multer')
+const multer = require('multer');
 const { storage } = require("../cloudConfig.js");
 const upload = multer({ storage });
-const Razorpay = require("razorpay");
-const crypto = require("crypto");
+const { sendBookingCancellationEmail } = require('../config/nodemailer');
 
-// Razorpay instance
-const razorpay = new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID,
-    key_secret: process.env.RAZORPAY_KEY_SECRET,
+// Add the history route BEFORE the :id routes
+router.get("/history", isLoggedIn, async (req, res) => {
+    try {
+        // Fetch bookings with listing details
+        const bookings = await Booking.find({ user: req.user._id })  // Changed from email to user
+            .populate('listing')
+            .sort({ createdAt: -1 });
+
+        res.render("listings/history", { bookings });
+    } catch (error) {
+        console.error(error);
+        req.flash("error", "Failed to fetch booking history");
+        res.redirect("/listings");
+    }
 });
 
 //index and create route
 router.route("/")
 .get(wrapAsync(listingcontroller.index))
-.post(isLoggedIn, upload.single('listing[image]') , validateListing , wrapAsync(listingcontroller.createListing));
+.post(isLoggedIn, upload.single('listing[image]'), validateListing, wrapAsync(listingcontroller.createListing));
 
 // New route
-router.get("/new",isLoggedIn,listingcontroller.renderNewForm);
+router.get("/new", isLoggedIn, listingcontroller.renderNewForm);
 
 //show, update and delete route
 router.route("/:id")
 .get(wrapAsync(listingcontroller.showListing))
-.put ( isLoggedIn,isOwner, upload.single('listing[image]') , validateListing , wrapAsync(listingcontroller.updateListing))
-.delete(isLoggedIn,isOwner, wrapAsync(listingcontroller.destroyListing));
+.put(isLoggedIn, isOwner, upload.single('listing[image]'), validateListing, wrapAsync(listingcontroller.updateListing))
+.delete(isLoggedIn, isOwner, wrapAsync(listingcontroller.destroyListing));
 
 //edit route
-router.get("/:id/edit",isLoggedIn,isOwner, wrapAsync(listingcontroller.renderEditForm));
+router.get("/:id/edit", isLoggedIn, isOwner, wrapAsync(listingcontroller.renderEditForm));
 
-// Route to handle booking and payment
-router.post("/:id/book", async (req, res) => {
-    const { id } = req.params;
-    const { firstName, lastName, phoneNumber, email, date, days, persons, totalAmount } = req.body;
+// Add this route BEFORE other :id routes
+router.post("/booking/:id/cancel", isLoggedIn, async (req, res) => {
+    try {
+        const booking = await Booking.findById(req.params.id)
+            .populate('listing')
+            .populate('user');
+        
+        if (!booking) {
+            return res.status(404).json({ error: 'Booking not found' });
+        }
 
-    // Save booking details in the database (optional)
+        if (booking.user._id.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ error: 'Not authorized' });
+        }
 
-    // Redirect to the payment page
-    res.render("listings/payment", {
-        listingId: id,
-        firstName,
-        lastName,
-        phoneNumber,
-        email,
-        date,
-        days,
-        persons,
-        amount: totalAmount,
-    });
-});
+        booking.status = 'cancelled';
+        await booking.save();
 
-router.get("/:id/payment", (req, res) => {
-    res.render("listings/payment", { listingId: req.params.id });
-});
+        // Send cancellation email
+        await sendBookingCancellationEmail(booking);
 
-router.post("/payment/success", async (req, res) => {
-    const { razorpay_payment_id, razorpay_order_id, razorpay_signature } = req.body;
-
-    // Verify the payment signature
-    const generated_signature = crypto
-        .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
-        .update(razorpay_order_id + "|" + razorpay_payment_id)
-        .digest("hex");
-
-    if (generated_signature === razorpay_signature) {
-        // Payment is successful
-        req.flash("success", "Payment successful! Thank you for booking.");
-        res.redirect("/listings"); // Redirect to the listings page
-    } else {
-        // Payment verification failed
-        req.flash("error", "Payment verification failed. Please try again.");
-        res.redirect("/listings"); // Redirect to the listings page
+        res.status(200).json({ message: 'Booking cancelled successfully' });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).json({ error: 'Failed to cancel booking' });
     }
-});
-
-router.get("/payment/failure/:id", (req, res) => {
-    const { id } = req.params;
-
-    // Flash an error message
-    req.flash("error", "Payment failed or was canceled. Please try again.");
-
-    // Redirect back to the listing page
-    res.redirect(`/listings/${id}`);
 });
 
 module.exports = router;

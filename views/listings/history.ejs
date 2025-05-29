@@ -1,0 +1,185 @@
+<% layout("layouts/boilerplate") %>
+<div class="container mt-4">
+    <h2 class="mb-4">Your Booking History</h2>
+
+    <% if (bookings && bookings.length > 0) { %>
+        <div class="row">
+            <% bookings.forEach(booking => { %>
+                <div class="col-12 mb-4">
+                    <div class="card shadow-sm">
+                        <div class="row g-0">
+                            <div class="col-md-3">
+                                <img src="<%= booking.listing.image.url %>" 
+                                    class="img-fluid rounded-start" 
+                                    alt="listing image" 
+                                    style="height: 200px; width: 100%; object-fit: cover; padding: 10px;">
+                            </div>
+                            <div class="col-md-9 ps-4"> <!-- Added padding-start (ps-4) -->
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start mb-3"> <!-- Added margin-bottom -->
+                                        <h4 class="card-title"><%= booking.listing.title %></h4>
+                                        <% if(booking.status === 'confirmed') { %>
+                                            <div class="d-flex align-items-center">
+                                                <span class="badge bg-success me-2">
+                                                    <i class="fas fa-check-circle"></i> Confirmed
+                                                </span>
+                                                <button class="btn btn-sm btn-outline-danger" 
+                                                        onclick="confirmCancel('<%= booking._id %>')"
+                                                        data-bs-toggle="tooltip" 
+                                                        title="Cancel Booking">
+                                                    <i class="fas fa-times"></i> Cancel
+                                                </button>
+                                            </div>
+                                        <% } else if(booking.status === 'cancelled') { %>
+                                            <span class="badge bg-danger">
+                                                <i class="fas fa-times-circle"></i> Cancelled
+                                            </span>
+                                        <% } %>
+                                    </div>
+                                    
+                                    <p class="card-text mb-4"> <!-- Added margin-bottom -->
+                                        <i class="fas fa-map-marker-alt text-danger"></i> 
+                                        <%= booking.listing.location %>
+                                    </p>
+                                    
+                                    <div class="row mt-2"> <!-- Added margin-top -->
+                                        <div class="col-md-6">
+                                            <p class="mb-3"> <!-- Increased margin-bottom -->
+                                                <i class="fas fa-calendar me-2"></i> <!-- Added margin-end to icon -->
+                                                <strong>Check-in:</strong> 
+                                                <%= new Date(booking.date).toLocaleDateString('en-US', 
+                                                    { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }) %>
+                                            </p>
+                                            <p class="mb-3">
+                                                <i class="fas fa-clock me-2"></i>
+                                                <strong>Duration:</strong> <%= booking.days %> days
+                                            </p>
+                                            <p class="mb-3">
+                                                <i class="fas fa-users me-2"></i>
+                                                <strong>Guests:</strong> <%= booking.persons %> persons
+                                            </p>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <p class="mb-3">
+                                                <strong>Amount Paid:</strong> ₹<%= booking.amount.toLocaleString('en-IN') %>
+                                            </p>
+                                            <p class="mb-3">
+                                                <i class="fas fa-phone me-2"></i>
+                                                <strong>Contact:</strong> <%= booking.phoneNumber %>
+                                            </p>
+                                            <p class="mb-3">
+                                                <i class="fas fa-envelope me-2"></i>
+                                                <strong>Email:</strong> <%= booking.email %>
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            <% }); %>
+        </div>
+    <% } else { %>
+        <div class="text-center my-5">
+            <i class="fas fa-calendar-times fa-4x text-muted mb-3"></i>
+            <h3 class="text-muted">No Bookings Yet</h3>
+            <p class="text-muted">You haven't made any bookings yet.</p>
+            <a href="/listings" class="btn btn-dark mt-3">Explore Listings</a>
+        </div>
+    <% } %>
+</div>
+
+<!-- Confirmation Modal -->
+<div class="modal fade" id="cancelModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Cancel Booking</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to cancel this booking?</p>
+                <p class="text-danger"><small>This action cannot be undone.</small></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No, Keep it</button>
+                <button type="button" class="btn btn-danger" id="confirmCancelBtn">Yes, Cancel Booking</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add this hidden input for storing booking ID -->
+<input type="hidden" id="bookingIdToCancel">
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Bootstrap Modal
+    const cancelModalElement = document.getElementById('cancelModal');
+    let cancelModal;
+    
+    if (cancelModalElement) {
+        cancelModal = new bootstrap.Modal(cancelModalElement);
+        
+        // Global function to handle cancel button click
+        window.confirmCancel = function(bookingId) {
+            if (!cancelModal) return;
+            document.getElementById('bookingIdToCancel').value = bookingId;
+            cancelModal.show();
+        };
+
+        // Handle confirmation
+        document.getElementById('confirmCancelBtn').addEventListener('click', async () => {
+            const bookingId = document.getElementById('bookingIdToCancel').value;
+            if (!bookingId) return;
+            
+            try {
+                const response = await fetch(`/listings/booking/${bookingId}/cancel`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to cancel booking');
+                }
+
+                // Show success message - UPDATED CODE
+                const container = document.querySelector('.container');
+                const existingMessage = container.querySelector('.alert');
+                if (existingMessage) {
+                    existingMessage.remove();
+                }
+
+                const flash = document.createElement('div');
+                flash.className = 'alert alert-success alert-dismissible fade show';
+                flash.innerHTML = `
+                    ${data.message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                `;
+                
+                // Insert at the beginning of the container
+                container.insertBefore(flash, container.firstChild);
+
+                // Reload after 1 second
+                setTimeout(() => window.location.reload(), 1000);
+            } catch (error) {
+                console.error('Error:', error);
+                alert(error.message || 'Failed to cancel booking');
+            } finally {
+                cancelModal.hide();
+            }
+        });
+    }
+
+    // Initialize tooltips
+    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    if (tooltipTriggerList.length > 0) {
+        [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+    }
+});
+</script>

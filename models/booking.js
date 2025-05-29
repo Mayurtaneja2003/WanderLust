@@ -14,6 +14,21 @@ const bookingSchema = new Schema({
     date: Date,
     days: Number,
     persons: Number,
+    amount: Number,
+    status: {
+        type: String,
+        enum: ['pending', 'confirmed', 'cancelled'],
+        default: 'pending'
+    },
+    stripeSessionId: String,
+    stripePaymentIntentId: String,
+    user: {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+        required: true
+    }
+}, {
+    timestamps: true // Adds createdAt and updatedAt fields
 });
 
 module.exports = mongoose.model("Booking", bookingSchema);
