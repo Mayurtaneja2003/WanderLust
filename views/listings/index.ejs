@@ -11,10 +11,17 @@
         margin-top: 2rem;
         margin-right: 2rem;
         opacity: 0.7;
+        text-decoration: none;
+        color: inherit;
+        transition: transform 0.2s;
     }
     .filter:hover{
+        transform: scale(1.1);
         opacity: 1;
         cursor: pointer;
+    }
+    .filter.active {
+        color: #fe424d;
     }
     .filter p{
         font-size: 0.8rem;
@@ -37,50 +44,39 @@
         <button>Create New Listing</button>
     </form> -->
     <div id  = "filters">
-        <div class="filter">
+        <a href="/listings/filter/trending" class="filter">
             <div><i class="fa-solid fa-fire"></i></div>
             <p>Trending</p>
-        </div>
-        <div class="filter">
-            <div><i class="fa-solid fa-bed"></i></div>
-            <p>Rooms</p>
-        </div>
-        <div class="filter">
+        </a>
+        <!-- Removed rooms filter -->
+        <a href="/listings/filter/iconic-cities" class="filter">
             <div><i class="fa-solid fa-mountain-city"></i></div>
             <p>Iconic Cities</p>
-        </div>
-        <div class="filter">
+        </a>
+        <a href="/listings/filter/mountains" class="filter">
             <div><i class="fa-solid fa-mountain"></i></div>
             <p>Mountains</p>
-        </div>
-        <div class="filter">
+        </a>
+        <a href="/listings/filter/castles" class="filter">
             <div><i class="fa-solid fa-fort-awesome"></i></div>
             <p>Castles</p>
-        </div>
-        <div class="filter">
+        </a>
+        <a href="/listings/filter/pools" class="filter">
             <div><i class="fa-solid fa-person-swimming"></i></div>
-            <p>Aamzing Pools</p>
-        </div>
-        <div class="filter">
+            <p>Amazing Pools</p>
+        </a>
+        <a href="/listings/filter/camping" class="filter">
             <div><i class="fa-solid fa-campground"></i></div>
             <p>Camping</p>
-        </div>
-        <div class="filter">
+        </a>
+        <a href="/listings/filter/farms" class="filter">
             <div><i class="fa-solid fa-cow"></i></div>
             <p>Farms</p>
-        </div>
-        <div class="filter">
+        </a>
+        <a href="/listings/filter/arctic" class="filter">
             <div><i class="fa-solid fa-snowflake"></i></div>
             <p>Arctic</p>
-        </div>
-        <!-- <div class="filter">
-            <div><i class="fa-solid fa-igloo"></i></div>
-            <p>Doms</p>
-        </div>
-        <div class="filter">
-            <div><i class="fa-solid fa-ship"></i></div>
-            <p>Boats</p>
-        </div> -->
+        </a>
 
         <div class="tax-toggle">
             <div class="form-check-reverse form-switch">

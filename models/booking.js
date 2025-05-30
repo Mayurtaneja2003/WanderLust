@@ -28,7 +28,23 @@ const bookingSchema = new Schema({
         required: true
     }
 }, {
-    timestamps: true // Adds createdAt and updatedAt fields
+    timestamps: true
+});
+
+// Add middleware to handle deleted listings
+bookingSchema.pre('find', function(next) {
+    this.populate({
+        path: 'listing',
+        select: 'title location image'
+    });
+    next();
+});
+
+bookingSchema.post('save', async function(doc) {
+    if (!doc.listing) {
+        doc.status = 'cancelled';
+        await doc.save();
+    }
 });
 
 module.exports = mongoose.model("Booking", bookingSchema);

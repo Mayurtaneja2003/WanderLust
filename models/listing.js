@@ -36,6 +36,14 @@ geometry:{
         type: [Number],
         required: true,
     }
+},
+category: {
+    type: [String],
+    enum: {
+        values: ['trending', 'iconic-cities', 'mountains', 'castles', 'pools', 'camping', 'farms', 'arctic'],
+        message: '{VALUE} is not a valid category'
+    },
+    required: true
 }
 });
 

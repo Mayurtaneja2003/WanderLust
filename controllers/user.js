@@ -1,27 +1,82 @@
 const User = require("../models/user");
-const { sendWelcomeEmail, sendLoginNotificationEmail } = require('../config/nodemailer');
+const { generateOTP, isOTPValid } = require("../utils/otpUtil");
+const { sendVerificationEmail, sendWelcomeEmail, sendLoginNotificationEmail } = require('../config/nodemailer');
 
 module.exports.renderSignupForm = (req,res)=>{
     res.render("users/signup.ejs");
 };
 
-module.exports.signup = async(req,res)=>{
-    try{
-        let {username,email,password}=req.body;
-        const newUser = new User({email,username});
-        const registeredUser = await User.register(newUser,password);
-        console.log(registeredUser);
-        req.login(registeredUser,(err)=>{
-            if(err){
-                return next(err);
+module.exports.signup = async(req, res) => {
+    try {
+        const { email, username, password } = req.body;
+        const otp = generateOTP();
+        
+        // Save user data and OTP in session
+        req.session.tempUser = {
+            email,
+            username,
+            password,
+            otp: {
+                code: otp,
+                generatedAt: new Date()
             }
-            // Send welcome email
-            sendWelcomeEmail(registeredUser);
-            req.flash("success","Welcome to Wanderlust!");
+        };
+
+        await sendVerificationEmail(email, otp);
+        res.render("users/verify-otp", { email });
+
+    } catch (e) {
+        req.flash("error", e.message);
+        res.redirect("/signup");
+    }
+};
+
+module.exports.verifyOTP = async (req, res) => {
+    try {
+        const { otp } = req.body;
+        const tempUser = req.session.tempUser;
+
+        if (!tempUser) {
+            req.flash("error", "Session expired. Please signup again.");
+            return res.redirect("/signup");
+        }
+
+        // Verify OTP
+        if (tempUser.otp.code !== otp) {
+            req.flash("error", "Invalid OTP. Please try again.");
+            return res.redirect("back");
+        }
+
+        // Check OTP expiration (50 seconds)
+        const now = new Date();
+        const otpAge = (now - new Date(tempUser.otp.generatedAt)) / 1000;
+        if (otpAge > 50) {
+            req.flash("error", "OTP has expired. Please request a new one.");
+            return res.redirect("back");
+        }
+
+        // Register user
+        const registeredUser = await User.register(
+            new User({ 
+                email: tempUser.email, 
+                username: tempUser.username
+            }), 
+            tempUser.password
+        );
+
+        // Login after registration
+        req.login(registeredUser, (err) => {
+            if (err) {
+                req.flash("error", "Something went wrong");
+                return res.redirect("/signup");
+            }
+            delete req.session.tempUser;
+            req.flash("success", "Welcome to Wanderlust!");
             res.redirect("/listings");
         });
-    }catch(e){
-        req.flash("error",e.message);
+
+    } catch (e) {
+        req.flash("error", e.message);
         res.redirect("/signup");
     }
 };

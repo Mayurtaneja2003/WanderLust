@@ -129,6 +129,10 @@ app.use((err,req,res,next)=>{
     // res.status(statusCode).send(message);
 });
 
-app.listen(8080,()=>{   
-    console.log("Server is running on port 8080");
+// Replace your port configuration
+const port = process.env.PORT || 8080;
+
+// Add this at the end of the file
+app.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
 });

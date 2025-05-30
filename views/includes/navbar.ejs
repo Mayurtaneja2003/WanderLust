@@ -30,10 +30,24 @@
         </div>
         
         <div class="navbar-nav ms-auto">
-          <form class="d-flex" role="search">
-            <input class="form-control me-2 search-inp" type="search" placeholder="Search destinations" />
-            <button class="btn search-btn" type="submit"><i class="fa-solid fa-magnifying-glass"></i>Search</button>
-          </form>          
+          <!-- Update the search form -->
+<form class="d-flex" action="/listings/search" method="GET">
+    <div class="input-group">
+        <input 
+            class="search-inp form-control" 
+            type="search" 
+            placeholder="Search by name or location" 
+            aria-label="Search"
+            name="q"
+            value="<%= typeof searchQuery !== 'undefined' ? searchQuery : '' %>"
+            required
+        >
+        <button class="search-btn btn" type="submit">
+            <i class="fas fa-search"></i>
+            Search
+        </button>
+    </div>
+</form>          
         </div>
 
         <div class="navbar-nav ms-auto">

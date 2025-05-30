@@ -106,3 +106,69 @@ module.exports.handleBooking = async (req, res) => {
     // Redirect to a payment gateway page (e.g., Razorpay, Stripe)
     res.redirect(`/listings/${id}/payment`);
 };
+
+module.exports.filterByCategory = async (req, res) => {
+    try {
+        const { category } = req.params;
+        let query = {};
+
+        // Case-insensitive search and array contains
+        const listings = await Listing.find({
+            category: {
+                $elemMatch: {
+                    $regex: new RegExp(category, 'i')
+                }
+            }
+        });
+
+        // If no listings found, try with similar categories
+        if (listings.length === 0) {
+            // Define category aliases
+            const categoryAliases = {
+                'arctic': ['winter', 'snow', 'ice'],
+                'farms': ['ranch', 'countryside', 'farm'],
+                'mountains': ['alpine', 'hills', 'mountain'],
+                'pools': ['swimming', 'pool', 'infinity'],
+                'camping': ['camp', 'outdoor', 'wilderness'],
+                'castles': ['palace', 'fortress', 'manor']
+            };
+
+            if (categoryAliases[category]) {
+                const altListings = await Listing.find({
+                    $or: [
+                        {
+                            category: {
+                                $elemMatch: {
+                                    $in: categoryAliases[category]
+                                }
+                            }
+                        },
+                        {
+                            description: {
+                                $regex: new RegExp(categoryAliases[category].join('|'), 'i')
+                            }
+                        }
+                    ]
+                });
+                
+                if (altListings.length > 0) {
+                    listings.push(...altListings);
+                }
+            }
+        }
+
+        // Remove duplicates if any
+        const uniqueListings = Array.from(new Set(listings.map(l => l._id)))
+            .map(id => listings.find(l => l._id === id));
+
+        res.render("listings/index", {
+            allListings: uniqueListings,
+            activeFilter: category
+        });
+
+    } catch (error) {
+        console.error("Filter Error:", error);
+        req.flash("error", "Error filtering listings");
+        res.redirect("/listings");
+    }
+};

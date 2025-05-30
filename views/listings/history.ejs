@@ -9,15 +9,28 @@
                     <div class="card shadow-sm">
                         <div class="row g-0">
                             <div class="col-md-3">
-                                <img src="<%= booking.listing.image.url %>" 
-                                    class="img-fluid rounded-start" 
-                                    alt="listing image" 
-                                    style="height: 200px; width: 100%; object-fit: cover; padding: 10px;">
+                                <% if (booking.listing && booking.listing.image) { %>
+                                    <img src="<%= booking.listing.image.url %>" 
+                                         class="img-fluid rounded-start" 
+                                         alt="listing image" 
+                                         style="height: 200px; width: 100%; object-fit: cover; padding: 10px;">
+                                <% } else { %>
+                                    <div class="placeholder-image" 
+                                         style="height: 200px; width: 100%; background-color: #eee; display: flex; align-items: center; justify-content: center;">
+                                        <i class="fas fa-home fa-3x text-muted"></i>
+                                    </div>
+                                <% } %>
                             </div>
                             <div class="col-md-9 ps-4"> <!-- Added padding-start (ps-4) -->
                                 <div class="card-body">
                                     <div class="d-flex justify-content-between align-items-start mb-3"> <!-- Added margin-bottom -->
-                                        <h4 class="card-title"><%= booking.listing.title %></h4>
+                                        <h4 class="card-title">
+                                            <% if (booking.listing) { %>
+                                                <%= booking.listing.title %>
+                                            <% } else { %>
+                                                Listing No Longer Available
+                                            <% } %>
+                                        </h4>
                                         <% if(booking.status === 'confirmed') { %>
                                             <div class="d-flex align-items-center">
                                                 <span class="badge bg-success me-2">
@@ -85,7 +98,10 @@
             <i class="fas fa-calendar-times fa-4x text-muted mb-3"></i>
             <h3 class="text-muted">No Bookings Yet</h3>
             <p class="text-muted">You haven't made any bookings yet.</p>
-            <a href="/listings" class="btn btn-dark mt-3">Explore Listings</a>
+            <a href="/listings" class="btn btn-dark mt-3">
+                <i class="fas fa-search me-2"></i>
+                Explore Listings
+            </a>
         </div>
     <% } %>
 </div>

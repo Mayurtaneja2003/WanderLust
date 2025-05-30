@@ -47,5 +47,68 @@
         const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
     });
     </script>
+    <script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('searchInput');
+    const searchResults = document.getElementById('searchResults');
+    let debounceTimer;
+
+    if (searchInput && searchResults) {
+        searchInput.addEventListener('input', function() {
+            clearTimeout(debounceTimer);
+            const query = this.value.trim();
+
+            if (query.length < 2) {
+                searchResults.style.display = 'none';
+                return;
+            }
+
+            debounceTimer = setTimeout(async () => {
+                try {
+                    const response = await fetch(`/listings/search?q=${encodeURIComponent(query)}`, {
+                        headers: {
+                            'Accept': 'application/json'
+                        }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Search failed');
+                    }
+
+                    const data = await response.json();
+
+                    if (data.listings && data.listings.length > 0) {
+                        searchResults.innerHTML = data.listings.map(listing => `
+                            <a href="/listings/${listing._id}" class="d-block p-2 text-decoration-none text-dark hover-bg-light">
+                                <div class="d-flex align-items-center">
+                                    <img src="${listing.image.url}" alt="${listing.title}" 
+                                         style="width: 50px; height: 50px; object-fit: cover;" 
+                                         class="me-2 rounded">
+                                    <div>
+                                        <div>${listing.title}</div>
+                                        <small class="text-muted">${listing.location}</small>
+                                    </div>
+                                </div>
+                            </a>
+                        `).join('');
+                        searchResults.style.display = 'block';
+                    } else {
+                        searchResults.style.display = 'none';
+                    }
+                } catch (err) {
+                    console.error('Search error:', err);
+                }
+            }, 300);
+        });
+
+        // Hide results when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+                searchResults.style.display = 'none';
+            }
+        });
+    }
+});
+</script>
 </body>
 </html>
