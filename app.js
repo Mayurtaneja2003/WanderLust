@@ -130,9 +130,9 @@ app.use((err,req,res,next)=>{
 });
 
 // Replace your port configuration
-const port = process.env.PORT || 8080;
+const port = process.env.PORT || 3000;
 
-// Add this at the end of the file
+// Update your app.listen
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
 });
