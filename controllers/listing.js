@@ -4,12 +4,33 @@ const mapToken = process.env.MAP_TOKEN;
 const geocodingClient = mbxGeocoding({ accessToken: mapToken });
 const Booking = require("../models/booking");
 
-module.exports.index =  async (req,res)=>{
-    const allListings = await Listing.find({});
-    res.render("listings/index", {allListings});
- }
+module.exports.index = async (req, res) => {
+    try {
+        let query = Listing.find({});
+        
+        // If user is logged in, exclude their listings
+        if (req.user) {
+            query = query.where('owner').ne(req.user._id);
+        }
+        
+        const listings = await query.exec();
+        res.render("listings/index", { 
+            listings,
+            allListings: listings, // Include both for compatibility
+            activeFilter: null
+        });
+    } catch (err) {
+        console.error("Error:", err);
+        req.flash("error", "Error loading listings");
+        res.render("listings/index", { 
+            listings: [],
+            allListings: [],
+            activeFilter: null
+        });
+    }
+};
 
- module.exports.renderNewForm = (req,res)=>{
+module.exports.renderNewForm = (req,res)=>{
     res.render("listings/new.ejs");
 }
 
@@ -29,25 +50,35 @@ module.exports.showListing = async(req,res)=>{
     res.render("listings/show.ejs", { listing });
 }
 
-module.exports.createListing = async(req,res,next)=>{
-   let response = await geocodingClient.forwardGeocode({
-        query: req.body.listing.location,
-        limit: 1
-      })
-        .send();      
-     
+module.exports.createListing = async(req, res, next) => {
+    try {
+        let response = await geocodingClient.forwardGeocode({
+            query: req.body.listing.location,
+            limit: 1
+        }).send();      
 
-    let url = req.file.path;
-    let filename = req.file.filename;
-    const newListing = new Listing(req.body.listing);
-    newListing.owner = req.user._id;
-    newListing.image = {url, filename};
-    newListing.geometry = response.body.features[0].geometry;
+        let url = req.file.path;
+        let filename = req.file.filename;
+        
+        const newListing = new Listing(req.body.listing);
+        newListing.owner = req.user._id;
+        newListing.image = {url, filename};
+        newListing.geometry = response.body.features[0].geometry;
 
-    let savedListing = await newListing.save();
-    console.log(savedListing);    
-    req.flash("success", "New Listing Created");
-    res.redirect("/listings");  
+        // Ensure category is always an array
+        if (!Array.isArray(req.body.listing.category)) {
+            newListing.category = req.body.listing.category ? [req.body.listing.category] : [];
+        }
+
+        let savedListing = await newListing.save();
+        console.log(savedListing);    
+        req.flash("success", "New Listing Created");
+        res.redirect("/listings");  
+    } catch (err) {
+        console.error(err);
+        req.flash("error", "Error creating listing");
+        res.redirect("/listings/new");
+    }
 };
 
 module.exports.renderEditForm = async (req,res)=>{
@@ -101,7 +132,6 @@ module.exports.handleBooking = async (req, res) => {
         persons,
     });
 
-    await booking.save();
 
     // Redirect to a payment gateway page (e.g., Razorpay, Stripe)
     res.redirect(`/listings/${id}/payment`);
@@ -110,59 +140,24 @@ module.exports.handleBooking = async (req, res) => {
 module.exports.filterByCategory = async (req, res) => {
     try {
         const { category } = req.params;
-        let query = {};
 
-        // Case-insensitive search and array contains
-        const listings = await Listing.find({
-            category: {
-                $elemMatch: {
-                    $regex: new RegExp(category, 'i')
-                }
-            }
-        });
+        // Build the query object
+        let query = {
+            category: category  // Match the selected category
+        };
 
-        // If no listings found, try with similar categories
-        if (listings.length === 0) {
-            // Define category aliases
-            const categoryAliases = {
-                'arctic': ['winter', 'snow', 'ice'],
-                'farms': ['ranch', 'countryside', 'farm'],
-                'mountains': ['alpine', 'hills', 'mountain'],
-                'pools': ['swimming', 'pool', 'infinity'],
-                'camping': ['camp', 'outdoor', 'wilderness'],
-                'castles': ['palace', 'fortress', 'manor']
-            };
-
-            if (categoryAliases[category]) {
-                const altListings = await Listing.find({
-                    $or: [
-                        {
-                            category: {
-                                $elemMatch: {
-                                    $in: categoryAliases[category]
-                                }
-                            }
-                        },
-                        {
-                            description: {
-                                $regex: new RegExp(categoryAliases[category].join('|'), 'i')
-                            }
-                        }
-                    ]
-                });
-                
-                if (altListings.length > 0) {
-                    listings.push(...altListings);
-                }
-            }
+        // If user is logged in, add condition to exclude their listings
+        if (req.user) {
+            query.owner = { $ne: req.user._id };
         }
 
-        // Remove duplicates if any
-        const uniqueListings = Array.from(new Set(listings.map(l => l._id)))
-            .map(id => listings.find(l => l._id === id));
+        // Execute the query with both conditions
+        const filteredListings = await Listing.find(query)
+            .populate("owner");
 
         res.render("listings/index", {
-            allListings: uniqueListings,
+            listings: filteredListings,
+            allListings: filteredListings,
             activeFilter: category
         });
 

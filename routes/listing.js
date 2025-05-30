@@ -10,7 +10,7 @@ const { storage } = require("../cloudConfig.js");
 const upload = multer({ storage });
 const { sendBookingCancellationEmail } = require('../config/nodemailer');
 
-// Add this route BEFORE other :id routes
+// ============== Booking Routes ==============
 router.post("/booking/:id/cancel", isLoggedIn, async (req, res) => {
     try {
         const booking = await Booking.findById(req.params.id)
@@ -38,78 +38,85 @@ router.post("/booking/:id/cancel", isLoggedIn, async (req, res) => {
     }
 });
 
-// 1. First define static routes
+// ============== Static Routes ==============
+// Booking History Route
 router.get("/history", isLoggedIn, async (req, res) => {
     try {
-        // Only get bookings with valid listings
         const bookings = await Booking.find({ user: req.user._id })
-            .populate({
-                path: 'listing',
-                select: 'title location image'
-            })
+            .populate('listing')
             .sort({ createdAt: -1 });
 
-        // Filter out bookings with null listings
-        const validBookings = bookings.filter(booking => booking.listing != null);
-
         res.render("listings/history", { 
-            bookings: validBookings,
-            messages: req.flash()
+            bookings,
+            pageTitle: "My Bookings"
         });
     } catch (error) {
-        console.error("History Error:", error);
+        console.error("Booking History Error:", error);
         req.flash("error", "Failed to load booking history");
         res.redirect("/listings");
     }
 });
 
+// My Listings Route
+router.get("/my", isLoggedIn, async (req, res) => {
+    try {
+        const listings = await Listing.find({ owner: req.user._id })
+            .populate('owner');
+        res.render("listings/my", { 
+            listings,
+            pageTitle: "My Listings"
+        });
+    } catch (error) {
+        console.error("My Listings Error:", error);
+        req.flash("error", "Failed to load your listings");
+        res.redirect("/listings");
+    }
+});
+
+// New Listing Route
 router.get("/new", isLoggedIn, listingcontroller.renderNewForm);
 
-// 1. Search route first
+// ============== Search & Filter Routes ==============
+// Search Route
 router.get("/search", async (req, res) => {
     try {
         const { q } = req.query;
-        if (!q) {
-            return res.redirect("/listings");
-        }
+        if (!q) return res.redirect("/listings");
 
         const listings = await Listing.find({
             $or: [
                 { title: { $regex: q, $options: "i" } },
                 { location: { $regex: q, $options: "i" } }
             ]
-        });
+        }).populate('owner');
 
-        // Return JSON for AJAX requests
-        if (req.headers.accept && req.headers.accept.includes('application/json')) {
-            return res.json({ listings });
-        }
-
-        // Render the full page for regular requests
-        return res.render("listings/search", { listings, searchQuery: q });
+        return req.headers.accept?.includes('application/json')
+            ? res.json({ listings })
+            : res.render("listings/search", { 
+                listings, 
+                searchQuery: q,
+                pageTitle: "Search Results" 
+              });
 
     } catch (err) {
         console.error("Search Error:", err);
-        if (req.headers.accept && req.headers.accept.includes('application/json')) {
-            return res.status(500).json({ error: "Search failed" });
-        }
-        req.flash("error", "Error performing search");
-        return res.redirect("/listings");
+        return handleSearchError(req, res, err);
     }
 });
 
-// 2. Then filter routes
+// Category Filter Route
 router.get("/filter/:category", async (req, res) => {
     try {
         const { category } = req.params;
-
-        // Find listings where the category array includes the selected category
-        const filteredListings = await Listing.find({
+        
+        // Find listings with matching category
+        const listings = await Listing.find({
             category: category
         });
 
         res.render("listings/index", { 
-            allListings: filteredListings,
+            listings,             // Use consistent variable name
+            allListings: listings, // For backward compatibility
             activeFilter: category
         });
 
@@ -120,17 +127,42 @@ router.get("/filter/:category", async (req, res) => {
     }
 });
 
-// 3. Then index routes
+// ============== Main Routes ==============
+// Index Routes
 router.route("/")
     .get(wrapAsync(listingcontroller.index))
-    .post(isLoggedIn, upload.single('listing[image]'), validateListing, wrapAsync(listingcontroller.createListing));
+    .post(
+        isLoggedIn, 
+        upload.single('listing[image]'), 
+        validateListing, 
+        wrapAsync(listingcontroller.createListing)
+    );
 
-// 4. Finally, dynamic ID routes
+// ============== Dynamic Routes ==============
 router.route("/:id")
     .get(wrapAsync(listingcontroller.showListing))
-    .put(isLoggedIn, isOwner, upload.single('listing[image]'), validateListing, wrapAsync(listingcontroller.updateListing))
+    .put(
+        isLoggedIn, 
+        isOwner, 
+        upload.single('listing[image]'), 
+        validateListing, 
+        wrapAsync(listingcontroller.updateListing)
+    )
     .delete(isLoggedIn, isOwner, wrapAsync(listingcontroller.destroyListing));
 
-router.get("/:id/edit", isLoggedIn, isOwner, wrapAsync(listingcontroller.renderEditForm));
+router.get("/:id/edit", 
+    isLoggedIn, 
+    isOwner, 
+    wrapAsync(listingcontroller.renderEditForm)
+);
+
+// Helper function for search error handling
+const handleSearchError = (req, res, err) => {
+    if (req.headers.accept?.includes('application/json')) {
+        return res.status(500).json({ error: "Search failed" });
+    }
+    req.flash("error", "Error performing search");
+    return res.redirect("/listings");
+};
 
 module.exports = router;

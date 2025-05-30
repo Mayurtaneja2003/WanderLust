@@ -51,17 +51,24 @@
         </div>
 
         <div class="navbar-nav ms-auto">
-          <a class="nav-link" href="/listings/new">Airbnb your home</a>
-          <% if (!currUser) { %>
-            <a class="nav-link" href="/signup"><b>Sign up</b></a>
-            <a class="nav-link" href="/login"><b>Log in</b></a>
-          <% } %>
-          <% if (currUser) { %>
-            <a class="nav-link" href="/listings/history">
-              <i class="fas fa-history"></i> My Bookings
-            </a>
-            <a class="nav-link" href="/logout"><b>Log Out</b></a>
-          <% } %>
+            <a class="nav-link" href="/listings/new">Airbnb your home</a>
+            <% if (!currUser) { %>
+                <a class="nav-link" href="/signup"><b>Sign up</b></a>
+                <a class="nav-link" href="/login"><b>Log in</b></a>
+            <% } %>
+            <% if (currUser) { %>
+                <div class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-user-circle"></i> My Account
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
+                        <li><a class="dropdown-item" href="/listings/my"><i class="fas fa-home"></i> My Listings</a></li>
+                        <li><a class="dropdown-item" href="/listings/history"><i class="fas fa-history"></i> My Bookings</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="/logout"><i class="fas fa-sign-out-alt"></i> Log Out</a></li>
+                    </ul>
+                </div>
+            <% } %>
         </div>
       </div>
     </div>

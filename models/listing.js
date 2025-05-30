@@ -4,10 +4,7 @@ const { required } = require("joi");
 const Schema = mongoose.Schema;
 
 const listingSchema = new Schema({
-    title: {
-        type: String,
-        required: true,
-    },
+    title: String,
     description: String,
     image: {
         url: String,
@@ -16,6 +13,10 @@ const listingSchema = new Schema({
     price: Number,
     location: String,
     country: String,
+    category: [{
+        type: String,
+        enum: ["trending", "rooms", "iconic-cities", "mountains", "castles", "pools", "camping", "farms", "arctic"]
+    }],
     reviews:[
     {
         type:Schema.Types.ObjectId,
@@ -37,14 +38,6 @@ geometry:{
         required: true,
     }
 },
-category: {
-    type: [String],
-    enum: {
-        values: ['trending', 'iconic-cities', 'mountains', 'castles', 'pools', 'camping', 'farms', 'arctic'],
-        message: '{VALUE} is not a valid category'
-    },
-    required: true
-}
 });
 
 //middleware to delete reviews when listin g is deleted
